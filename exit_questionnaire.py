@@ -35,26 +35,27 @@ def parser_args():
         required=True)
     return parser.parse_args()
 
-args = parser_args()
-# Parse arguments form the command line
-reporter = args.reporter[0] # Name of user generating report (Firstname Surname)
-current_date = datetime.datetime.today()
-selected_date = args.date[0] # In "YYYY-MM-DD" format. If date not specified will default to current_date.
 
-# Sanity check on entered date:
-if selected_date > current_date:
-    sys.exit("Selected_date is in the future, please check value entered.\n")
-elif selected_date < (current_date - datetime.timedelta(days=365)): # Ensure date entered is within last year
-    sys.exit("Selected_date is in the distant past, please check value entered.\n")
- 
-interpretation_request = args.interpretation_request[0]
+
+def check_date(_d):
+    """Sanity check on the entered date"""
+    current_date = datetime.datetime.today()
+    if _d > current_date:
+        sys.exit("Selected_date is in the future, please check value entered.\n")
+    elif _d < (current_date - datetime.timedelta(days=365)): # Ensure date entered is within last year
+        sys.exit("Selected_date is in the distant past, please check value entered.\n")
+    
 
 # Check format of request_id matches expected format:
-if bool(re.match(r"^\d+-\d+$", interpretation_request)) == False:
-    sys.exit("Interpretation request ID doesn't match the format 11111-1, please check entry")
-else:
-    # If correctly formated split intertation_request on '-' and allocate to request_id, request_version
-    request_id, request_version = interpretation_request.split('-')
+def get_request_details(_id):
+    """Check the format of the entered Interpretation request ID and version number"""
+    if bool(re.match(r"^\d+-\d+$", _id)) == False:
+        sys.exit("Interpretation request ID doesn't match the format 11111-1, please check entry")
+    else:
+        # If correctly formated split intertation_request on '-' and allocate to request_id, request_version
+        request_id, request_version = _id.split('-')
+    return request_id, request_version
+
 
 # Check that reporter is entered correctly by checking against config.json file of valid reporters:
 # TODO Write code to check reporter is correct + create json file of expected inputs
@@ -62,36 +63,59 @@ else:
 # Step 1) Create exit questionnaire payload:
 
 # instantiate FamilyLevelQuestions (FLQs)
-flqs = FLQs(
-    # Hard coded entries appropriate for Neg Neg reports (NOTE LOWER case "no")
-    caseSolvedFamily = "no", 
-    segregationQuestion = "no",
-    additionalComments = "No tier 1 or 2 variants detected",
-)
+def create_flq():
+    flqs = FLQs(
+        # Hard coded entries appropriate for Neg Neg reports (NOTE LOWER case "no")
+        caseSolvedFamily = "no", 
+        segregationQuestion = "no",
+        additionalComments = "No tier 1 or 2 variants detected",
+    )
+    return flqs
 
 # Validate flqs object
-if flqs.validate(flqs.toJsonDict()) == False:
-    # pprint(flqs.toJsonDict()) # Prints flqs for debugging
-    # Print error message with list of non-valid fields:
-    print("Invalid flqs object created as described below:\n")
-    print(flqs.validate(flqs.toJsonDict(), verbose=True).messages)
-    sys.exit()
+def validate_flqs(_flqs):
+    if  _flqs.validate(_flqs.toJsonDict()) == False:
+        # pprint(flqs.toJsonDict()) # Prints flqs for debugging
+        # Print error message with list of non-valid fields:
+        print("Invalid flqs object created as described below:\n")
+        print(_flqs.validate(_flqs.toJsonDict(), verbose=True).messages)
+        sys.exit()
 
 # instantiate ExitQuestionnaire (EQ)
-eq = EQ(
-    eventDate=str(selected_date), # Convert from datetime to str
-    reporter=reporter,
-    familyLevelQuestions=flqs,
-    variantGroupLevelQuestions=[],
-)
+def create_eq(_selected_date, _reporter, _flqs):
+    eq = EQ(
+        eventDate=str(_selected_date), # Convert from datetime to str
+        reporter=_reporter,
+        familyLevelQuestions=_flqs,
+        variantGroupLevelQuestions=[],
+    )
+    return eq
 
 # Validate eq object
-if eq.validate(eq.toJsonDict()) == False:
-    # Print error message with list of non-valid fields:
-    #pprint(eq.toJsonDict())) # Prints eq for debugging
-    print("Invalid eq object created as described below:\n")
-    print(eq.validate(eq.toJsonDict(), verbose=True).messages)
-    sys.exit()
+def validate_eq(_eq):
+    if _eq.validate(_eq.toJsonDict()) == False:
+        # Print error message with list of non-valid fields:
+        #pprint(eq.toJsonDict())) # Prints eq for debugging
+        print("Invalid eq object created as described below:\n")
+        print(_eq.validate(_eq.toJsonDict(), verbose=True).messages)
+        sys.exit()
+
+def main():
+    args = parser_args()
+    # Parse arguments form the command line
+    reporter = args.reporter[0] # Name of user generating report (Firstname Surname)
+    selected_date = args.date[0] # In "YYYY-MM-DD" format. If date not specified will default to current_date.
+    # Sanity check on entered date
+    check_date(selected_date)
+    interpretation_request = args.interpretation_request[0]
+    # Split interpretation_request into request_id & request_version
+    request_id, request_version = get_request_details(interpretation_request)
+    flqs = create_flq()
+    eq = create_eq(selected_date, reporter, flqs)
+    validate_eq(eq)
+
+if __name__ == '__main__':
+    main()
 
 # Step 2) Once the Exit Questionnaire payload is ready send via the CIP API:
 
