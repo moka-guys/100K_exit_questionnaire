@@ -14,5 +14,11 @@ The script is run during the generation of 100k Neg Neg reports.
 
 ## What are the limitations of this script
 
+This script imports functions from GelReportModels:
+```git
+git clone git@github.com:genomicsengland/GelReportModels.git
+cd GelReportModels
+pip install .
+```
 ## This script was made by Viapath Genome Informatics
 
