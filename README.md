@@ -16,7 +16,7 @@ This script outputs a log file.
 
 ## How does this script work?
 
-The script builds an exit questionnaire using Gel Models and then the Exit Questionnaire payload is sent to the CIP API.  The code is based upon this workshop [code](https://github.com/genomicsengland/ACGS_GeL_API_workshop/blob/master/Exit_Questionnaire_Workshop/WORKSHOP.ipynb).  
+The script builds an exit questionnaire using Gel Models and then the Exit Questionnaire payload is sent to the CIP API.  The code is based upon this workshop [code](https://github.com/genomicsengland/ACGS_GeL_API_workshop/blob/master/Exit_Questionnaire_Workshop/WORKSHOP.ipynb)  
 
 ## What are the limitations of this script
 
