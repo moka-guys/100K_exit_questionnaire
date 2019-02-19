@@ -50,31 +50,28 @@ elif selected_date < (current_date - datetime.timedelta(days=365)): # Ensure dat
 interpretation_request = args.interpretation_request[0]
 
 # Check format of request_id matches expected format:
-
 if bool(re.match(r"^\d+-\d+$", interpretation_request)) == False:
     sys.exit("Interpretation request ID doesn't match the format 11111-1, please check entry")
 else:
-    # Split intertation_request on '-' and allocate to request_id, request_version
+    # If correctly formated split intertation_request on '-' and allocate to request_id, request_version
     request_id, request_version = interpretation_request.split('-')
 
-# print(request_id + "\n" + request_version)
-
 # Check that reporter is entered correctly by checking against config.json file of valid reporters:
-# TODO Create config generation file
+# TODO Write code to check reporter is correct + create json file of expected inputs
 
-# Step 1) Create exit questionnaire payload
+# Step 1) Create exit questionnaire payload:
 
 # instantiate FamilyLevelQuestions (FLQs)
 flqs = FLQs(
-    # Hard coded entries appropriate for Neg Neg reports
-    caseSolvedFamily = "no",
+    # Hard coded entries appropriate for Neg Neg reports (NOTE LOWER case "no")
+    caseSolvedFamily = "no", 
     segregationQuestion = "no",
     additionalComments = "No tier 1 or 2 variants detected",
 )
 
 # Validate flqs object
 if flqs.validate(flqs.toJsonDict()) == False:
-    # pprint(flqs.toJsonDict()) # Prints 
+    # pprint(flqs.toJsonDict()) # Prints flqs for debugging
     # Print error message with list of non-valid fields:
     print("Invalid flqs object created as described below:\n")
     print(flqs.validate(flqs.toJsonDict(), verbose=True).messages)
@@ -82,7 +79,7 @@ if flqs.validate(flqs.toJsonDict()) == False:
 
 # instantiate ExitQuestionnaire (EQ)
 eq = EQ(
-    eventDate=str(selected_date),
+    eventDate=str(selected_date), # Convert from datetime to str
     reporter=reporter,
     familyLevelQuestions=flqs,
     variantGroupLevelQuestions=[],
@@ -91,7 +88,7 @@ eq = EQ(
 # Validate eq object
 if eq.validate(eq.toJsonDict()) == False:
     # Print error message with list of non-valid fields:
-    #pprint(eq.toJsonDict()))
+    #pprint(eq.toJsonDict())) # Prints eq for debugging
     print("Invalid eq object created as described below:\n")
     print(eq.validate(eq.toJsonDict(), verbose=True).messages)
     sys.exit()
