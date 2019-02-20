@@ -35,8 +35,6 @@ def parser_args():
         required=True)
     return parser.parse_args()
 
-
-
 def check_date(_d):
     """Sanity check on the entered date"""
     current_date = datetime.datetime.today()
@@ -56,14 +54,11 @@ def get_request_details(_id):
         request_id, request_version = _id.split('-')
     return request_id, request_version
 
-
 # Check that reporter is entered correctly by checking against config.json file of valid reporters:
 # TODO Write code to check reporter is correct + create json file of expected inputs
 
-# Step 1) Create exit questionnaire payload:
-
-# instantiate FamilyLevelQuestions (FLQs)
 def create_flq():
+    """instantiate FamilyLevelQuestions (FLQs)"""
     flqs = FLQs(
         # Hard coded entries appropriate for Neg Neg reports (NOTE LOWER case "no")
         caseSolvedFamily = "no", 
@@ -72,8 +67,8 @@ def create_flq():
     )
     return flqs
 
-# Validate flqs object
 def validate_flqs(_flqs):
+    """Validate flqs object"""
     if  _flqs.validate(_flqs.toJsonDict()) == False:
         # pprint(flqs.toJsonDict()) # Prints flqs for debugging
         # Print error message with list of non-valid fields:
@@ -81,8 +76,8 @@ def validate_flqs(_flqs):
         print(_flqs.validate(_flqs.toJsonDict(), verbose=True).messages)
         sys.exit()
 
-# instantiate ExitQuestionnaire (EQ)
 def create_eq(_selected_date, _reporter, _flqs):
+    """instantiate ExitQuestionnaire (EQ)"""
     eq = EQ(
         eventDate=str(_selected_date), # Convert from datetime to str
         reporter=_reporter,
@@ -91,14 +86,68 @@ def create_eq(_selected_date, _reporter, _flqs):
     )
     return eq
 
-# Validate eq object
 def validate_eq(_eq):
+    """Validate eq object"""
     if _eq.validate(_eq.toJsonDict()) == False:
         # Print error message with list of non-valid fields:
         #pprint(eq.toJsonDict())) # Prints eq for debugging
         print("Invalid eq object created as described below:\n")
         print(_eq.validate(_eq.toJsonDict(), verbose=True).messages)
         sys.exit()
+
+
+# TODO add JellyPy authentication
+# JellyPy/pyCIPAPI/auth.py
+
+cip_api_url = "https://cipapi-test-tng.gel.zone/api/2/" # TODO add as commandline arg
+
+def get_case():
+"""GET /api/2/interpretation-request/{ir_id}/{ir_version}/"""
+    endpoint = "interpretation-request/{ir_id}/{ir_version}/".format(
+            ir_id=2, ir_version=2,
+    )
+    url = cip_api_url + endpoint
+    print(url)
+    try:
+        response = requests.get(url=url, headers=auth_header)
+    except requests.exceptions.HTTPError as errh:
+        print ("Http Error:",errh)
+    except requests.exceptions.ConnectionError as errc:
+        print ("Error Connecting:",errc)
+    except requests.exceptions.Timeout as errt:
+        print ("Timeout Error:",errt)
+    except requests.exceptions.RequestException as err:
+        print ("Undefined Error:",err)
+    if response.status_code != 200:
+        SystemExit("Function get_case response.status_code != 200 indicating error")
+
+    # Check ????
+    response.json().keys()
+
+    # Check ????
+    len(response.json().get("clinical_report"))
+
+def put_case():
+    """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/ """
+    
+    endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/".format(
+            ir_id=2, ir_version=2, clinical_report_version=1
+    )
+    url = cip_api_url + endpoint
+    print(url)
+
+    response = requests.put(url=url, headers=auth_header, json=eq.toJsonDict())
+
+    # check status code
+    if response.status_code != 200:
+        SystemExit("Function put_case response.status_code != 200 indicating error")
+
+    # check status content
+    response.content
+
+    new_eq = EQ.fromJsonDict(response.json().get("exit_questionnaire_data"))
+
+    new_eq.validate(new_eq.toJsonDict())
 
 def main():
     args = parser_args()
@@ -110,91 +159,16 @@ def main():
     interpretation_request = args.interpretation_request[0]
     # Split interpretation_request into request_id & request_version
     request_id, request_version = get_request_details(interpretation_request)
+    # Create Exit Questionnaire payload
     flqs = create_flq()
+    validate_flqs(flqs)
     eq = create_eq(selected_date, reporter, flqs)
     validate_eq(eq)
+    # Send the Exit Questionnaire payload via the CIP API:
+    # get_case()
+    put_case()
 
 if __name__ == '__main__':
     main()
 
-# Step 2) Once the Exit Questionnaire payload is ready send via the CIP API:
-
-# `get_authenticated_header` is a simple method for authenticating your credentials with
-#  the CIP API, which will return you authenticated headers to supply with your HTTP requests.
-
-# TODO add JellyPy authentication
-# JellyPy/pyCIPAPI/auth.py
-
-# def get_authenticated_header(url, username):
-    
-#     url += "{endpoint}"
-#     auth_endpoint = "get-token/"
-#     import getpass
-#     password = getpass.getpass()
-
-#     irl_response = requests.post(
-#         url=url.format(endpoint=auth_endpoint),
-#         json=dict(
-#             username=username,
-#             password=password,
-#         ),
-#     )
-#     irl_response_json = irl_response.json()
-#     token = irl_response_json.get('token')
-
-#     auth_header = {
-#         'Accept': 'application/json',
-#         "Authorization": "JWT {token}".format(token=token),
-#     }
-#     return auth_header
-
-
-# # You will be prompted to enter your CIP API password here
-# # TODO replace with code to add API token access
-
-# import requests
-# cip_api_url = "https://cipapi-test-tng.gel.zone/api/2/"
-# auth_header = get_authenticated_header(url=cip_api_url, username="glever")
-# # TODO remove hardcoded user
-
-# # ???????????????????????
-# """
-# GET /api/2/interpretation-request/{ir_id}/{ir_version}/ 
-# """
-# endpoint = "interpretation-request/{ir_id}/{ir_version}/".format(
-#         ir_id=2, ir_version=2,
-# )
-# url = cip_api_url + endpoint
-# print(url)
-
-# response = requests.get(url=url, headers=auth_header)
-
-# # Check ????
-# response.json().keys()
-
-# # Check ????
-# len(response.json().get("clinical_report"))
-
-
-# # ????????????????????????
-# """
-# PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/ 
-# """
-# endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/".format(
-#         ir_id=2, ir_version=2, clinical_report_version=1
-# )
-# url = cip_api_url + endpoint
-# print(url)
-
-# response = requests.put(url=url, headers=auth_header, json=eq.toJsonDict())
-
-# # check status code
-# response.status_code
-
-# # check status content
-# response.content
-
-# new_eq = EQ.fromJsonDict(response.json().get("exit_questionnaire_data"))
-
-# new_eq.validate(new_eq.toJsonDict())
 
