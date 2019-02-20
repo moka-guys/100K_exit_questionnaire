@@ -30,5 +30,20 @@ This script reads in a json file named ????? listing valid reporter names which 
 
 This script requires a json file with the API key, ???? 
 
+## Testing 
+
+Generating the Exit Questionnaire is covered by tests in tests_generate_eq.py
+```bash
+pytest tests_generate_eq.py
+```
+Coverage reports can be generated using:
+
+```bash
+# Create coverage report
+exit_questionnaire.py -r "John Smith" -i 11111-1 -d 2019-02-19
+# View coverage report
+coverage report
+```
+
 ## This script was made by Viapath Genome Informatics
 
