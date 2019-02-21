@@ -35,8 +35,6 @@ Authentication credentials are stored in auth_credentials.py and are in
 ```
 This script reads in a json file named ????? listing valid reporter names which it uses to validate inputs.
 
-This script requires a json file with the API key, ???? 
-
 ## Testing 
 
 Generating the Exit Questionnaire is covered by tests in tests_generate_eq.py

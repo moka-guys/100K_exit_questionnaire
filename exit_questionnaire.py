@@ -97,7 +97,9 @@ def validate_eq(_eq):
 
 
 # TODO add JellyPy authentication
-# JellyPy/pyCIPAPI/auth.py
+# See  https://github.com/NHS-NGS/JellyPy/blob/master/pyCIPAPI/auth.py
+
+# AuthenticatedCIPAPISession()
 
 cip_api_url = "https://cipapi-test-tng.gel.zone/api/2/" # TODO add as commandline arg
 
