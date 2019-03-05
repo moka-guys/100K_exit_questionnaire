@@ -1,4 +1,4 @@
-from __future__ import print_function
+#!/usr/bin/python3
 # Generate an Exit Questionnaire for NegNeg Reports
 # Documentation for Gel Report Models is available: http://gelreportmodels.genomicsengland.co.uk
 
@@ -104,7 +104,7 @@ def validate_eq(_eq):
 cip_api_url = "https://cipapi-test-tng.gel.zone/api/2/" # TODO add as commandline arg
 
 def get_case():
-"""GET /api/2/interpretation-request/{ir_id}/{ir_version}/"""
+    """GET /api/2/interpretation-request/{ir_id}/{ir_version}/"""
     endpoint = "interpretation-request/{ir_id}/{ir_version}/".format(
             ir_id=2, ir_version=2,
     )
@@ -138,7 +138,7 @@ def put_case():
     url = cip_api_url + endpoint
     print(url)
 
-    response = requests.put(url=url, headers=auth_header, json=eq.toJsonDict())
+    # response = requests.put(url=url, headers=auth_header, json=eq.toJsonDict())
 
     # check status code
     if response.status_code != 200:
