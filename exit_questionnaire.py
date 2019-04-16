@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-# Generate an Exit Questionnaire for NegNeg Reports
+# Generate an Exit Questionnaire and Summary of Findings for NegNeg Reports
+# Script created by 
 # Documentation for Gel Report Models is available: http://gelreportmodels.genomicsengland.co.uk
 
 # import libraries
@@ -21,6 +22,7 @@ from pprint import pprint
 # sys.path.append(config.jellypy_path)
 from pyCIPAPI.auth import AuthenticatedCIPAPISession
 from pyCIPAPI.interpretation_requests import get_interpretation_request_list
+from pyCIPAPI.interpretation_requests import get_interpretation_request_json
 
 
 def valid_date(s):
@@ -115,19 +117,19 @@ def validate_eq(_eq):
         print(_eq.validate(_eq.toJsonDict(), verbose=True).messages)
         sys.exit()
 
-def create_cr(reporter, date, genome_assembly='GRCh38'):
+def create_cr(reporter, date, ir_id, ir_version):
     """Create Summary of Findings"""
 
-    cr = ClinicalReportRD_3_0_0(interpretationID='1',
-                                interpretationRequestVersions='1',
-                                interpretationRequestAnalysisVersion='1',
+    cr = ClinicalReportRD_3_0_0(interpretationRequestID=ir_id,
+                                interpretationRequestVersion=ir_version,
+                                interpretationRequestAnalysisVersion=ir_version,
                                 reportingDate=date,
                                 user=reporter,
                                 candidateVariants= [],
                                 candidateStructuralVariants=[],
                                 genomicInterpretation='No tier 1 or 2 variants detected',
-                                referenceDatabaseVersions={'genomeAssembly': genome_assembly},
-                                softwareVersions={'galacticLibrary': None}
+                                referenceDatabasesVersions={'genomeAssembly': 'GRCh38'},
+                                softwareVersions={}
                                 )
     return cr
 
@@ -140,6 +142,8 @@ def validate_cr(_cr):
         print("Invalid eq object created as described below:\n")
         print(_cr.validate(_cr.toJsonDict(), verbose=True).messages)
         sys.exit()
+
+ 
 
 def get_case(ir_id, ir_version, cip_api_url):
     """GET /api/2/interpretation-request/{ir_id}/{ir_version}/"""
@@ -204,18 +208,22 @@ def main():
     interpretation_request = parsed_args.interpretation_request[0]
     # Split interpretation_request into request_id & request_version
     request_id, request_version = get_request_details(interpretation_request)
+    # Get data from Interpretation Portal
+    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True)
+    pprint(ir_json)
     # Create Exit Questionnaire payload
     flqs = create_flq()
     validate_flqs(flqs)
     eq = create_eq(selected_date, reporter, flqs)
     validate_eq(eq)
     # Create Summary of Findings
-    cr = create_cr(reporter, selected_date)
+    cr = create_cr(reporter, str(selected_date), request_id, request_version)
+    # pprint(cr.toJsonDict())
     validate_cr(cr)
     # Send the Exit Questionnaire payload via the CIP API:
     cip_api_url = "https://cipapi.genomicsengland.nhs.uk/interpretationportal/#/participant/"
-    get_case(request_id, request_version,  cip_api_url)
-    put_case(request_id, request_version, cip_api_url, eq)
+    # get_case(request_id, request_version,  cip_api_url)
+    # put_case(request_id, request_version, cip_api_url, eq)
 
 if __name__ == '__main__':
     main()
