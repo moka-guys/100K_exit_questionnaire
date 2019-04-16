@@ -131,8 +131,15 @@ def create_cr(reporter, date, genome_assembly='GRCh38'):
                                 )
     return cr
 
+
 def validate_cr(_cr):
-    pass
+    """Validate cr object"""
+    if _cr.validate(_cr.toJsonDict()) == False:
+        # Print error message with list of non-valid fields:
+        # pprint(eq.toJsonDict())) # Prints eq for debugging
+        print("Invalid eq object created as described below:\n")
+        print(_cr.validate(_cr.toJsonDict(), verbose=True).messages)
+        sys.exit()
 
 def get_case(ir_id, ir_version, cip_api_url):
     """GET /api/2/interpretation-request/{ir_id}/{ir_version}/"""
@@ -203,7 +210,8 @@ def main():
     eq = create_eq(selected_date, reporter, flqs)
     validate_eq(eq)
     # Create Summary of Findings
-    # TODO add call to create_summary_of_findings()
+    cr = create_cr(reporter, selected_date)
+    validate_cr(cr)
     # Send the Exit Questionnaire payload via the CIP API:
     cip_api_url = "https://cipapi.genomicsengland.nhs.uk/interpretationportal/#/participant/"
     get_case(request_id, request_version,  cip_api_url)
