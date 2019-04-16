@@ -50,7 +50,7 @@ It also uses https://github.com/NHS-NGS/JellyPy/blob/master/pyCIPAPI/auth.py to 
 
 Authentication credentials are stored in auth_credentials.py and are in
         dictionary format:
-        ```python
+```python
         auth_credentials = {"username": "username", "password": "password"}
 ```
 This script reads in a json file named ????? listing valid reporter names which it uses to validate inputs. #TODO add this functionality
