@@ -13,9 +13,10 @@ Generates an Exit Questionnaire and Summary of Findings payload for NegNeg Repor
 
 optional arguments:
   -h, --help            show this help message and exit
-  -r, --reporter 
-  -d, --date
+  -r, --reporter        name of report generator 
+  -d, --date            date of report
   -i, --interpretation_request
+  -t, --testing         Flag for using Beta data
 """
 
 # import libraries
@@ -63,9 +64,13 @@ def parser_args():
         help='Date in YYYY-MM-DD format recorded in Exit Questionnaire as process date, defaults to current date.',
         required=False, type=valid_date)
     parser.add_argument(
+        '-t', '--testing',
+        help='Flag to use the CIP-API Beta data during testing', action='store_true')
+    parser.add_argument(
         '-i', '--interpretation_request', nargs='+',
         help='Interpretation request ID including version number, in the format 11111-1',
         required=True)
+
     return parser.parse_args()
 
 
@@ -114,7 +119,7 @@ def create_eq(_selected_date, _reporter, _flqs):
 
 
 def validate_object(_object, _str_object_type):
-    """Validate an flqs, eq or cr object"""
+    """Validates an flqs, eq or cr object and produces an informative error message if non-valid object"""
     if _object.validate(_object.toJsonDict()) == False:
         # Print error message with list of non-valid fields:
         print("Invalid {} object created as described below:".format(_str_object_type))
@@ -140,7 +145,7 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
 
 
 def put_case(ir_id, ir_version,cip_api_url, eq, cr):
-    """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/ """
+    """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
 
     endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/".format(
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
@@ -168,17 +173,19 @@ def main():
     # Parse arguments from the command line
     reporter = parsed_args.reporter[0]  # Name of user generating report (Firstname Surname)
     selected_date = parsed_args.date[0]  # In "YYYY-MM-DD" format. If date not specified will default to current_date.
-    # Sanity check on entered date
-    check_date(selected_date)
-    # Get the interpretation request info from command line
+    check_date(selected_date) # Sanity check on entered date
     interpretation_request = parsed_args.interpretation_request[0]
-    # Split interpretation_request into request_id & request_version
-    request_id, request_version = get_request_details(interpretation_request)
+    request_id, request_version = get_request_details(interpretation_request) # Split into request_id & request_version
+    # Set the CIP-API URL:
+    if parsed_args.testing == False:
+        cip_api_url = "https://cipapi.genomicsengland.nhs.uk/interpretationportal/#/participant/"
+    else:
+        cip_api_url = "https://cipapi-beta.genomicsengland.co.uk/interpretationportal/participant/"
+        print("TESTING MODE active using the beta data at: {}".format(cip_api_url))  
     # Get interpretation request data from Interpretation Portal
     ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True)
     # pprint(ir_json)
-    # Parse genome assembly from ir_json
-    genome_build = ir_json['assembly']
+    genome_build = ir_json['assembly']  # Parse genome assembly from ir_json
     # Create Exit Questionnaire payload
     flqs = create_flq()
     validate_object(flqs, "Family Level Questions")
@@ -186,11 +193,12 @@ def main():
     validate_object(eq, "Exit Questionnaire")
     # Create Summary of Findings
     cr = create_cr(reporter, str(selected_date), request_id, request_version, genome_build)
-    # pprint(cr.toJsonDict())
     validate_object(cr, "Summary of Findings")
+    # pprint(cr.toJsonDict())
+
     # Send the Exit Questionnaire payload via the CIP API:
-    cip_api_url = "https://cipapi.genomicsengland.nhs.uk/interpretationportal/#/participant/"
     # put_case(request_id, request_version, cip_api_url, eq, cr)
 
 if __name__ == '__main__':
     main()
+    
