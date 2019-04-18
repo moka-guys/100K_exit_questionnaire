@@ -1,7 +1,22 @@
 #!/usr/bin/python3
-# Generate an Exit Questionnaire and Summary of Findings for NegNeg Reports
-# Script created by 
-# Documentation for Gel Report Models is available: http://gelreportmodels.genomicsengland.co.uk
+
+"""
+v1.0 - GS 2019/04/18
+Requirements:
+    Python 3.6
+    JellyPy
+    GeL Report Models (v6 or higher)
+
+usage: exit_questionnaire.py [-h] -
+
+Generates an Exit Questionnaire and Summary of Findings payload for NegNeg Reports and uploads them via the CIP-API
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -r, --reporter 
+  -d, --date
+  -i, --interpretation_request
+"""
 
 # import libraries
 import argparse
@@ -11,9 +26,10 @@ import re
 import requests
 import sys
 
-from protocols.reports_3_0_0 import RareDiseaseExitQuestionnaire as EQ
-from protocols.reports_3_0_0 import FamilyLevelQuestions as FLQs
-from protocols.reports_3_0_0 import ClinicalReportRD as ClinicalReportRD_3_0_0
+# Documentation for Gel Report Models is available: http://gelreportmodels.genomicsengland.co.uk
+from protocols.reports_6_0_0 import RareDiseaseExitQuestionnaire as EQ
+from protocols.reports_6_0_0 import FamilyLevelQuestions as FLQs
+from protocols.reports_6_0_0 import ClinicalReport as ClinicalReport_6_0_0
 from pprint import pprint
 
 # JellyPy used for authentication
@@ -39,15 +55,15 @@ def parser_args():
     parser = argparse.ArgumentParser(
         description='Generates an Exit Questionnaire for NegNeg reports and sends via CIP API')
     parser.add_argument(
-        '-reporter', '-r', nargs=1,
+        '-r', '--reporter', nargs=1,
         help='Name of user who is generating the report, in the format "Firstname Surname"',
         required=True, type=str)
     parser.add_argument(
-        '-date', '-d', nargs=1,
+        '-d', '--date', nargs=1,
         help='Date in YYYY-MM-DD format recorded in Exit Questionnaire as process date, defaults to current date.',
         required=False, type=valid_date)
     parser.add_argument(
-        '-interpretation_request', '-i', nargs='+',
+        '-i', '--interpretation_request', nargs='+',
         help='Interpretation request ID including version number, in the format 11111-1',
         required=True)
     return parser.parse_args()
@@ -62,7 +78,6 @@ def check_date(_date):
         sys.exit("Selected_date is in the distant past, please check value entered.\n")
 
 
-# Check format of request_id matches expected format:
 def get_request_details(_id):
     """Check the format of the entered Interpretation request ID and version number"""
     if bool(re.match(r"^\d+-\d+$", _id)) == False:
@@ -87,16 +102,6 @@ def create_flq():
     return flqs
 
 
-def validate_flqs(_flqs):
-    """Validate flqs object"""
-    if _flqs.validate(_flqs.toJsonDict()) == False:
-        # pprint(flqs.toJsonDict()) # Prints flqs for debugging
-        # Print error message with list of non-valid fields:
-        print("Invalid flqs object created as described below:\n")
-        print(_flqs.validate(_flqs.toJsonDict(), verbose=True).messages)
-        sys.exit()
-
-
 def create_eq(_selected_date, _reporter, _flqs):
     """create ExitQuestionnaire (EQ)"""
     eq = EQ(
@@ -108,73 +113,34 @@ def create_eq(_selected_date, _reporter, _flqs):
     return eq
 
 
-def validate_eq(_eq):
-    """Validate eq object"""
-    if _eq.validate(_eq.toJsonDict()) == False:
+def validate_object(_object, _str_object_type):
+    """Validate an flqs, eq or cr object"""
+    if _object.validate(_object.toJsonDict()) == False:
         # Print error message with list of non-valid fields:
         # pprint(eq.toJsonDict())) # Prints eq for debugging
-        print("Invalid eq object created as described below:\n")
-        print(_eq.validate(_eq.toJsonDict(), verbose=True).messages)
+        print("Invalid {} object created as described below:".format(_str_object_type))
+        print(_object.validate(_object.toJsonDict(), verbose=True).messages)
         sys.exit()
 
-def create_cr(reporter, date, ir_id, ir_version):
+
+def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
     """Create Summary of Findings"""
 
-    cr = ClinicalReportRD_3_0_0(interpretationRequestID=ir_id,
-                                interpretationRequestVersion=ir_version,
-                                interpretationRequestAnalysisVersion=ir_version,
-                                reportingDate=date,
-                                user=reporter,
+    cr = ClinicalReport_6_0_0(interpretationRequestId=_ir_id,
+                                interpretationRequestVersion=int(_ir_version), 
+                                interpretationRequestAnalysisVersion=_ir_version,
+                                reportingDate=_date,
+                                user=_reporter,
                                 candidateVariants= [],
                                 candidateStructuralVariants=[],
                                 genomicInterpretation='No tier 1 or 2 variants detected',
-                                referenceDatabasesVersions={'genomeAssembly': 'GRCh38'},
+                                referenceDatabasesVersions={'genomeAssembly': _genome_assembly},
                                 softwareVersions={}
                                 )
     return cr
 
 
-def validate_cr(_cr):
-    """Validate cr object"""
-    if _cr.validate(_cr.toJsonDict()) == False:
-        # Print error message with list of non-valid fields:
-        # pprint(eq.toJsonDict())) # Prints eq for debugging
-        print("Invalid eq object created as described below:\n")
-        print(_cr.validate(_cr.toJsonDict(), verbose=True).messages)
-        sys.exit()
-
- 
-
-def get_case(ir_id, ir_version, cip_api_url):
-    """GET /api/2/interpretation-request/{ir_id}/{ir_version}/"""
-    endpoint = "interpretation-request/{ir_id}/{ir_version}/".format(
-        #ir_id=2, ir_version=2,
-        ir_id=ir_id, ir_version=ir_version,
-    )
-    url = cip_api_url + endpoint
-    print(url)
-    try:
-        gel_session = AuthenticatedCIPAPISession()
-        response = gel_session.get(url=url)
-    except requests.exceptions.HTTPError as errh:
-        print ("Http Error:", errh)
-    except requests.exceptions.ConnectionError as errc:
-        print ("Error Connecting:", errc)
-    except requests.exceptions.Timeout as errt:
-        print ("Timeout Error:", errt)
-    except requests.exceptions.RequestException as err:
-        print ("Undefined Error:", err)
-    if response.status_code != 200:
-        SystemExit("Function get_case response.status_code != 200 indicating error")
-
-    # Check ????
-    # response.json().keys()
-
-    # Check ????
-    # len(response.json().get("clinical_report"))
-
-
-def put_case(ir_id, ir_version,cip_api_url, eq):
+def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/ """
 
     endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/".format(
@@ -208,25 +174,23 @@ def main():
     interpretation_request = parsed_args.interpretation_request[0]
     # Split interpretation_request into request_id & request_version
     request_id, request_version = get_request_details(interpretation_request)
-    # Get data from Interpretation Portal
+    # Get interpretation request data from Interpretation Portal
     ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True)
-    pprint(ir_json)
+    # pprint(ir_json)
+    # Parse genome assembly from ir_json
+    genome_build = ir_json['assembly']
     # Create Exit Questionnaire payload
     flqs = create_flq()
-    validate_flqs(flqs)
+    validate_object(flqs, "flqs")
     eq = create_eq(selected_date, reporter, flqs)
-    validate_eq(eq)
+    validate_object(eq, "Exit Questionnaire")
     # Create Summary of Findings
-    cr = create_cr(reporter, str(selected_date), request_id, request_version)
+    cr = create_cr(reporter, str(selected_date), request_id, request_version, genome_build)
     # pprint(cr.toJsonDict())
-    validate_cr(cr)
+    validate_object(cr, "Summary of Findings")
     # Send the Exit Questionnaire payload via the CIP API:
     cip_api_url = "https://cipapi.genomicsengland.nhs.uk/interpretationportal/#/participant/"
-    # get_case(request_id, request_version,  cip_api_url)
-    # put_case(request_id, request_version, cip_api_url, eq)
+    # put_case(request_id, request_version, cip_api_url, eq, cr)
 
 if __name__ == '__main__':
     main()
-
-
-
