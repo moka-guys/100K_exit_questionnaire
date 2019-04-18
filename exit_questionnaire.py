@@ -67,7 +67,7 @@ def parser_args():
         '-t', '--testing',
         help='Flag to use the CIP-API Beta data during testing', action='store_true')
     parser.add_argument(
-        '-i', '--interpretation_request', nargs='+',
+        '-i', '--interpretation_request', nargs=1,
         help='Interpretation request ID including version number, in the format 11111-1',
         required=True)
 
@@ -146,15 +146,30 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
 
 def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
-
-    endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/".format(
+    # Create endpoint from user supplied variables ir_id and ir_version:
+    endpoint = "/{ir_id}/{ir_version}/{clinical_report_version}/".format(
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
     )
-    url = cip_api_url + endpoint
-    # print(url)
+    # Create urls for uploading exit questionnaire and summary of findings 
+    exit_questionnaire_url = cip_api_url + "exit-questionnaire" + endpoint
+    summary_of_findings_url = cip_api_url + "??clinicalReport????" + endpoint
+    print(exit_questionnaire_url)
+    print(summary_of_findings_url)
 
+
+    # Open Authenticated CIP-API session:
     gel_session = AuthenticatedCIPAPISession()
-    response = gel_session.get(url=url, json=eq.toJsonDict())
+    
+    # Upload exit questionnaire:
+
+    # Download and check exit questionnaire:
+
+    # Upload Summary of findings:
+
+    # Download and check summary of findings:
+
+    '''
+    response = gel_session.put(url=url, json=eq.toJsonDict())
 
     # check status code
     if response.status_code != 200:
@@ -166,7 +181,7 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     new_eq = EQ.fromJsonDict(response.json().get("exit_questionnaire_data"))
 
     new_eq.validate(new_eq.toJsonDict())
-
+    '''
 
 def main():
     parsed_args = parser_args()
@@ -197,7 +212,7 @@ def main():
     # pprint(cr.toJsonDict())
 
     # Send the Exit Questionnaire payload via the CIP API:
-    # put_case(request_id, request_version, cip_api_url, eq, cr)
+    put_case(request_id, request_version, cip_api_url, eq, cr)
 
 if __name__ == '__main__':
     main()
