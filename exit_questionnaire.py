@@ -30,7 +30,7 @@ import sys
 from protocols.reports_6_0_0 import RareDiseaseExitQuestionnaire as EQ
 from protocols.reports_6_0_0 import FamilyLevelQuestions as FLQs
 from protocols.reports_6_0_0 import ClinicalReport as ClinicalReport_6_0_0
-from pprint import pprint
+from pprint import pprint # Used for debugging
 
 # JellyPy used for authentication
 # See  https://github.com/NHS-NGS/JellyPy/blob/master/pyCIPAPI/auth.py
@@ -117,7 +117,6 @@ def validate_object(_object, _str_object_type):
     """Validate an flqs, eq or cr object"""
     if _object.validate(_object.toJsonDict()) == False:
         # Print error message with list of non-valid fields:
-        # pprint(eq.toJsonDict())) # Prints eq for debugging
         print("Invalid {} object created as described below:".format(_str_object_type))
         print(_object.validate(_object.toJsonDict(), verbose=True).messages)
         sys.exit()
@@ -147,7 +146,7 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr):
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
     )
     url = cip_api_url + endpoint
-    print(url)
+    # print(url)
 
     gel_session = AuthenticatedCIPAPISession()
     response = gel_session.get(url=url, json=eq.toJsonDict())
@@ -166,11 +165,12 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr):
 
 def main():
     parsed_args = parser_args()
-    # Parse arguments form the command line
+    # Parse arguments from the command line
     reporter = parsed_args.reporter[0]  # Name of user generating report (Firstname Surname)
     selected_date = parsed_args.date[0]  # In "YYYY-MM-DD" format. If date not specified will default to current_date.
     # Sanity check on entered date
     check_date(selected_date)
+    # Get the interpretation request info from command line
     interpretation_request = parsed_args.interpretation_request[0]
     # Split interpretation_request into request_id & request_version
     request_id, request_version = get_request_details(interpretation_request)
@@ -181,7 +181,7 @@ def main():
     genome_build = ir_json['assembly']
     # Create Exit Questionnaire payload
     flqs = create_flq()
-    validate_object(flqs, "flqs")
+    validate_object(flqs, "Family Level Questions")
     eq = create_eq(selected_date, reporter, flqs)
     validate_object(eq, "Exit Questionnaire")
     # Create Summary of Findings
