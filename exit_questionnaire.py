@@ -146,13 +146,13 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
 
 def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
-    # Create endpoint from user supplied variables ir_id and ir_version:
-    endpoint = "/{ir_id}/{ir_version}/{clinical_report_version}/".format(
+    # Create endpoint from user supplied variables ir_id and ir_version: # TODO chnage ir_version dynamically 
+    endpoint = "/1/{ir_id}/{ir_version}/{clinical_report_version}/".format(
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
     )
     # Create urls for uploading exit questionnaire and summary of findings 
     exit_questionnaire_url = cip_api_url + "exit-questionnaire" + endpoint
-    summary_of_findings_url = cip_api_url + "??clinicalReport????" + endpoint
+    summary_of_findings_url = cip_api_url + "clinical-report" + endpoint
     print(exit_questionnaire_url)
     print(summary_of_findings_url)
 
@@ -160,23 +160,23 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     # Open Authenticated CIP-API session:
     gel_session = AuthenticatedCIPAPISession()
     
-    # Upload exit questionnaire:
-    response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
-    if response.status_code != 200:
-        SystemExit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload")
+    # # Upload exit questionnaire:
+    # #response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
+    # if response.status_code != 200:
+    #     SystemExit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload")
 
-    # Download and check exit questionnaire:
-    response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
-    # TODO code to check downloaded eq
+    # # Download and check exit questionnaire:
+    # response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
+    # # TODO code to check downloaded eq
 
-    # Upload Summary of findings:
-    response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
-    if response.status_code != 200:
-        SystemExit("Function put_case response.status_code != 200 indicating error: Summary of Findings upload")
+    # # Upload Summary of findings:
+    # #response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
+    # if response.status_code != 200:
+    #     SystemExit("Function put_case response.status_code != 200 indicating error: Summary of Findings upload")
 
-    # Download and check summary of findings:
-    response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
-    # TODO code to check downloaded cr
+    # # Download and check summary of findings:
+    # response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
+    # # TODO code to check downloaded cr
 
 
 def main():
@@ -189,26 +189,30 @@ def main():
     request_id, request_version = get_request_details(interpretation_request) # Split into request_id & request_version
     # Set the CIP-API URL:
     if parsed_args.testing == False:
-        cip_api_url = "https://cipapi.genomicsengland.nhs.uk/interpretationportal/#/participant/"
+        cip_api_url = "https://cipapi.genomicsengland.nhs.uk/api/2/"
     else:
-        cip_api_url = "https://cipapi-beta.genomicsengland.co.uk/interpretationportal/participant/"
+        cip_api_url = "https://cipapi-beta.genomicsengland.co.uk/api/2/"
         print("TESTING MODE active using the beta data at: {}".format(cip_api_url))  
     # Get interpretation request data from Interpretation Portal
     ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True)
-    # pprint(ir_json)
-    genome_build = ir_json['assembly']  # Parse genome assembly from ir_json
+    print("Downloaded IR")
+    print(ir_json)
+    # genome_build = ir_json['assembly']  # Parse genome assembly from ir_json
+    genome_build = "GRCh38" # TODO reinstate code above
+    print(genome_build)
     # Create Exit Questionnaire payload
     flqs = create_flq()
     validate_object(flqs, "Family Level Questions")
     eq = create_eq(selected_date, reporter, flqs)
     validate_object(eq, "Exit Questionnaire")
+    # pprint(eq.toJsonDict())
     # Create Summary of Findings
     cr = create_cr(reporter, str(selected_date), request_id, request_version, genome_build)
     validate_object(cr, "Summary of Findings")
     # pprint(cr.toJsonDict())
 
     # Send the Exit Questionnaire payload via the CIP API:
-    put_case(request_id, request_version, cip_api_url, eq, cr)
+    # put_case(request_id, request_version, cip_api_url, eq, cr)
 
 if __name__ == '__main__':
     main()
