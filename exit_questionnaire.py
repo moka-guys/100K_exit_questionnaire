@@ -137,8 +137,8 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
                                 user=_reporter,
                                 candidateVariants= [],
                                 candidateStructuralVariants=[],
-                                genomicInterpretation='No tier 1 or 2 variants detected',
-                                referenceDatabasesVersions={'genomeAssembly': _genome_assembly},
+                                genomicInterpretation="No tier 1 or 2 variants detected",
+                                referenceDatabasesVersions={"genomeAssembly": _genome_assembly},
                                 softwareVersions={}
                                 )
     return cr
@@ -147,36 +147,37 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
 def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
     # Create endpoint from user supplied variables ir_id and ir_version: # TODO chnage ir_version dynamically 
-    endpoint = "/1/{ir_id}/{ir_version}/{clinical_report_version}/".format(
+    endpoint = "/{ir_id}/{ir_version}/{clinical_report_version}/".format(
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
-    )
+    ) # TODO Check of clinical report
     # Create urls for uploading exit questionnaire and summary of findings 
     exit_questionnaire_url = cip_api_url + "exit-questionnaire" + endpoint
     summary_of_findings_url = cip_api_url + "clinical-report" + endpoint
     print(exit_questionnaire_url)
     print(summary_of_findings_url)
 
-
     # Open Authenticated CIP-API session:
     gel_session = AuthenticatedCIPAPISession()
-    
-    # # Upload exit questionnaire:
-    # #response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
+
+    # Upload Summary of findings:
+    #response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
     # if response.status_code != 200:
-    #     SystemExit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload")
+    #    SystemExit("Function put_case response.status_code != 200 indicating error: Summary of Findings upload failed")
 
-    # # Download and check exit questionnaire:
-    # response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
-    # # TODO code to check downloaded eq
-
-    # # Upload Summary of findings:
-    # #response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
-    # if response.status_code != 200:
-    #     SystemExit("Function put_case response.status_code != 200 indicating error: Summary of Findings upload")
-
-    # # Download and check summary of findings:
+    # Download and check summary of findings:
     # response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
-    # # TODO code to check downloaded cr
+    # TODO code to check downloaded cr
+    
+    # Upload exit questionnaire:
+    response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
+    if response.status_code != 200:
+        SystemExit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload failed")
+
+    # Download and check exit questionnaire:
+    # response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
+    # TODO code to check downloaded eq
+
+
 
 
 def main():
@@ -193,26 +194,33 @@ def main():
     else:
         cip_api_url = "https://cipapi-beta.genomicsengland.co.uk/api/2/"
         print("TESTING MODE active using the beta data at: {}".format(cip_api_url))  
+    
     # Get interpretation request data from Interpretation Portal
-    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True)
-    print("Downloaded IR")
-    print(ir_json)
-    # genome_build = ir_json['assembly']  # Parse genome assembly from ir_json
-    genome_build = "GRCh38" # TODO reinstate code above
+    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True) # TODO: Add flag for Beta data set in JellyPy
+    try:
+        genome_build = ir_json['genomeAssemblyVersion']  # Parse genome assembly from ir_json - genomeAssemblyVersion
+    except KeyError as e:
+        print('I got a KeyError from ir_json when tring to return genomeAssemblyVersion')
+        genome_build = "GRCh38" # Default to build 38 - TODO change this before going into production (add testing flag to JellyPy) 
+    except:
+        print('Exception generating ir_json to parse for genomeAssemblyVersion')
+        raise
+    
+     # TODO reinstate code above
     print(genome_build)
     # Create Exit Questionnaire payload
     flqs = create_flq()
     validate_object(flqs, "Family Level Questions")
     eq = create_eq(selected_date, reporter, flqs)
     validate_object(eq, "Exit Questionnaire")
-    # pprint(eq.toJsonDict())
+    pprint(eq.toJsonDict())
     # Create Summary of Findings
     cr = create_cr(reporter, str(selected_date), request_id, request_version, genome_build)
     validate_object(cr, "Summary of Findings")
     # pprint(cr.toJsonDict())
 
     # Send the Exit Questionnaire payload via the CIP API:
-    # put_case(request_id, request_version, cip_api_url, eq, cr)
+    put_case(request_id, request_version, cip_api_url, eq, cr)
 
 if __name__ == '__main__':
     main()
