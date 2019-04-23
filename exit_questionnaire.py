@@ -12,11 +12,11 @@ usage: exit_questionnaire.py [-h] -
 Generates an Exit Questionnaire and Summary of Findings payload for NegNeg Reports and uploads them via the CIP-API
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -r, --reporter        name of report generator 
-  -d, --date            date of report
-  -i, --interpretation_request
-  -t, --testing         Flag for using Beta data
+  -h, --help                    show this help message and exit
+  -r, --reporter                name of report generator 
+  -d, --date                    date of report
+  -i, --interpretation_request  interpretation request ID
+  -t, --testing                 Flag for using Beta data
 """
 
 # import libraries
@@ -61,8 +61,8 @@ def parser_args():
         required=True, type=str)
     parser.add_argument(
         '-d', '--date', nargs=1,
-        help='Date in YYYY-MM-DD format recorded in Exit Questionnaire as process date, defaults to current date.',
-        required=False, type=valid_date)
+        help='Date in YYYY-MM-DD format recorded in Exit Questionnaire as process date.',
+        required=True, type=valid_date)
     parser.add_argument(
         '-t', '--testing',
         help='Flag to use the CIP-API Beta data during testing', action='store_true')
@@ -161,27 +161,23 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     gel_session = AuthenticatedCIPAPISession()
     
     # Upload exit questionnaire:
+    response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
+    if response.status_code != 200:
+        SystemExit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload")
 
     # Download and check exit questionnaire:
+    response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
+    # TODO code to check downloaded eq
 
     # Upload Summary of findings:
+    response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
+    if response.status_code != 200:
+        SystemExit("Function put_case response.status_code != 200 indicating error: Summary of Findings upload")
 
     # Download and check summary of findings:
+    response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
+    # TODO code to check downloaded cr
 
-    '''
-    response = gel_session.put(url=url, json=eq.toJsonDict())
-
-    # check status code
-    if response.status_code != 200:
-        SystemExit("Function put_case response.status_code != 200 indicating error")
-
-    # check status content
-    response.content
-
-    new_eq = EQ.fromJsonDict(response.json().get("exit_questionnaire_data"))
-
-    new_eq.validate(new_eq.toJsonDict())
-    '''
 
 def main():
     parsed_args = parser_args()
