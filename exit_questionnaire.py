@@ -27,7 +27,6 @@ import json
 import re
 import requests
 import sys
-import maya # Remove once testing done
 
 # Documentation for Gel Report Models is available: http://gelreportmodels.genomicsengland.co.uk
 from protocols.reports_6_0_0 import RareDiseaseExitQuestionnaire as EQ
@@ -39,7 +38,7 @@ from pprint import pprint # Used for debugging
 # See  https://github.com/NHS-NGS/JellyPy/blob/master/pyCIPAPI/auth.py
 # Append JellyPy to python path, needed when running via paramiko from Windows
 # sys.path.append(config.jellypy_path)
-#from pyCIPAPI.auth import AuthenticatedCIPAPISession
+from pyCIPAPI.auth import AuthenticatedCIPAPISession
 from pyCIPAPI.interpretation_requests import get_interpretation_request_list
 from pyCIPAPI.interpretation_requests import get_interpretation_request_json
 
@@ -146,7 +145,7 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
     return cr
 
 
-def put_case(ir_id, ir_version,cip_api_url, eq, cr):
+def put_case(ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
     # Create endpoint from user supplied variables ir_id and ir_version: # TODO chnage ir_version dynamically 
     eq_endpoint = "/{ir_id}/{ir_version}/{clinical_report_version}/".format(
@@ -164,7 +163,7 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr):
     print(summary_of_findings_url)
 
     # Open Authenticated CIP-API session:
-    gel_session = AuthenticatedCIPAPISession()
+    gel_session = AuthenticatedCIPAPISession(testing_on=testing_on)
     # print(gel_session.headers)
     # print(gel_session)
 
@@ -204,7 +203,7 @@ def main():
         print("TESTING MODE active using the beta data at: {}".format(cip_api_url))  
     
     # Get interpretation request data from Interpretation Portal
-    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True) # TODO: Add flag for Beta data set in JellyPy
+    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True, testing_on=parsed_args.testing)
     try:
         genome_build = ir_json['genomeAssemblyVersion']  # Parse genome assembly from ir_json - genomeAssemblyVersion
     except KeyError as e:
@@ -228,7 +227,7 @@ def main():
     # print(json.dumps(cr.toJsonDict())) # For debugging
 
     # Send the Exit Questionnaire and summary of findings payload via the CIP API:
-    put_case(request_id, request_version, cip_api_url, eq, cr)
+    put_case(request_id, request_version, cip_api_url, eq, cr, testing_on=parsed_args.testing)
 
 if __name__ == '__main__':
     main()
