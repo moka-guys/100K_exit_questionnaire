@@ -55,7 +55,7 @@ def valid_date(s):
 def parser_args():
     """Parse arguments from the command line"""
     parser = argparse.ArgumentParser(
-        description='Generates an Exit Questionnaire for NegNeg reports and sends via CIP API')
+        description='Generates an Exit Questionnaire for NegNeg reports and submits via CIP API')
     parser.add_argument(
         '-r', '--reporter', nargs=1,
         help='Name of user who is generating the report, in the format "Firstname Surname"',
@@ -86,10 +86,11 @@ def check_date(_date):
 
 def get_request_details(_id):
     """Check the format of the entered Interpretation request ID and version number"""
+    # Regex to check that entered value is digits separated by -
     if bool(re.match(r"^\d+-\d+$", _id)) == False:
         sys.exit("Interpretation request ID doesn't match the format 11111-1, please check entry")
     else:
-        # If correctly formated split intertation_request on '-' and allocate to request_id, request_version
+        # If correctly formatted split itertation_request on '-' and allocate to request_id, request_version
         request_id, request_version = _id.split('-')
     return request_id, request_version
 
@@ -98,7 +99,7 @@ def get_request_details(_id):
 # TODO Write code to check reporter is correct + create json file of expected inputs
 
 def create_flq():
-    """instantiate FamilyLevelQuestions (FLQs)"""
+    """instantiate FamilyLevelQuestions (FLQs) using GeL Report Models module"""
     flqs = FLQs(
         # Hard coded entries appropriate for Neg Neg reports (NOTE LOWER case "no")
         caseSolvedFamily="no",
@@ -111,7 +112,7 @@ def create_flq():
 def create_eq(_selected_date, _reporter, _flqs):
     """create ExitQuestionnaire (EQ)"""
     eq = EQ(
-        eventDate=str(_selected_date),  # Convert from datetime to str
+        eventDate=_selected_date,
         reporter=_reporter,
         familyLevelQuestions=_flqs,
         variantGroupLevelQuestions=[],
@@ -140,7 +141,8 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
                                 candidateStructuralVariants=[],
                                 genomicInterpretation="No tier 1 or 2 variants detected",
                                 referenceDatabasesVersions={"genomeAssembly": _genome_assembly},
-                                softwareVersions={}
+                                softwareVersions={},
+                                supportingEvidence=[]
                                 )
     return cr
 
@@ -148,19 +150,17 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly):
 def put_case(ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
     # Create endpoint from user supplied variables ir_id and ir_version: # TODO chnage ir_version dynamically 
-    eq_endpoint = "/{ir_id}/{ir_version}/{clinical_report_version}/".format(
+    eq_endpoint = "/{ir_id}/{ir_version}/{clinical_report_version}/?reports_v6=true".format(
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
     )
-    cr_endpoint = "/genomics_england_tiering/raredisease/GEL-23-1/"
+    cr_endpoint = "/genomics_england_tiering/raredisease/GEL-23-1/?reports_v6=true"
         # TODO dynamically create cr_endpoint report ID (may need to query CIP-API to return GEL, CIP etc)
         # https://cipapi-beta.genomicsengland.co.uk/api/2/clinical-report/genomics_england_tiering/raredisease/GEL-23-1/
 
-    )
+  
     # Create urls for uploading exit questionnaire and summary of findings 
     exit_questionnaire_url = cip_api_url + "exit-questionnaire" + eq_endpoint
     summary_of_findings_url = cip_api_url + "clinical-report" + cr_endpoint
-    print(exit_questionnaire_url)
-    print(summary_of_findings_url)
 
     # Open Authenticated CIP-API session:
     gel_session = AuthenticatedCIPAPISession(testing_on=testing_on)
@@ -171,7 +171,7 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
     response = gel_session.post(url=summary_of_findings_url, json=cr.toJsonDict())
     print(response.status_code)
     if response.status_code != 201:
-        SystemExit("Function put_case response.status_code != 201 indicating error: Summary of Findings creation failed")
+        sys.exit("Function put_case response.status_code != 201 indicating error: Summary of Findings creation failed")
 
     # Download and check summary of findings:
     # response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
@@ -180,7 +180,7 @@ def put_case(ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
     # Upload exit questionnaire:
     response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
     if response.status_code != 200:
-       SystemExit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload failed")
+       sys.exit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload failed")
 
     # Download and check exit questionnaire:
     # response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
@@ -193,6 +193,7 @@ def main():
     reporter = parsed_args.reporter[0]  # Name of user generating report (Firstname Surname)
     selected_date = parsed_args.date[0]  # In "YYYY-MM-DD" format. If date not specified will default to current_date.
     check_date(selected_date) # Sanity check on entered date
+    selected_date = selected_date.strftime("%Y-%m-%d") # Convert to string
     interpretation_request = parsed_args.interpretation_request[0]
     request_id, request_version = get_request_details(interpretation_request) # Split into request_id & request_version
     # Set the CIP-API URL:
@@ -203,14 +204,18 @@ def main():
         print("TESTING MODE active using the beta data at: {}".format(cip_api_url))  
     
     # Get interpretation request data from Interpretation Portal
-    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True, testing_on=parsed_args.testing)
+    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True, testing_on=True)
+    # print(ir_json.keys())
+    # print(ir_json.get('files'))
+    #with open('data.json', 'w') as outfile:
+    #    json.dump(ir_json, outfile)
+
     try:
-        genome_build = ir_json['genomeAssemblyVersion']  # Parse genome assembly from ir_json - genomeAssemblyVersion
+        genome_build = ir_json.get('assembly')  # Parse genome assembly from ir_json - genomeAssemblyVersion
     except KeyError as e:
-        print('I got a KeyError from ir_json when tring to return genomeAssemblyVersion')
-        genome_build = "GRCh38" # Default to build 38 - TODO change this before going into production (add testing flag to JellyPy) 
+        sys.exit('I got a KeyError from ir_json when tring to return genomeAssembly')
     except:
-        print('Exception generating ir_json to parse for genomeAssemblyVersion')
+        print('Exception generating ir_json to parse for genomeAssembly')
         raise
     
      # TODO reinstate code above
@@ -226,8 +231,8 @@ def main():
     validate_object(cr, "Summary of Findings")
     # print(json.dumps(cr.toJsonDict())) # For debugging
 
-    # Send the Exit Questionnaire and summary of findings payload via the CIP API:
-    put_case(request_id, request_version, cip_api_url, eq, cr, testing_on=parsed_args.testing)
+    # Submit the Exit Questionnaire and summary of findings payload via the CIP API:
+    # put_case(request_id, request_version, cip_api_url, eq, cr, testing_on=parsed_args.testing)
 
 if __name__ == '__main__':
     main()
