@@ -33,6 +33,7 @@ import sys
 from protocols.reports_6_0_0 import RareDiseaseExitQuestionnaire as EQ
 from protocols.reports_6_0_0 import FamilyLevelQuestions as FLQs
 from protocols.reports_6_0_0 import ClinicalReport as ClinicalReport_6_0_0
+from protocols.reports_6_0_0 import InterpretedGenome
 from pprint import pprint # Used for debugging
 
 # JellyPy used for authentication
@@ -59,11 +60,7 @@ def parser_args():
         description='Generates an Exit Questionnaire for NegNeg reports and submits via CIP API')
     parser.add_argument(
         '-r', '--reporter', nargs=1,
-        help='Name of person who is generating the report, in the format "Firstname Surname"',
-        required=True, type=str)
-    parser.add_argument(
-        '-u', '--user_name', nargs=1,
-        help='CIP-API user name which will be recorded in the report, normally in the format "jbloggs"',
+        help='CIP-API user name of person who is generating the report, normally in the format "jbloggs"',
         required=True, type=str)
     parser.add_argument(
         '-d', '--date', nargs=1,
@@ -133,23 +130,40 @@ def validate_object(_object, _str_object_type):
         sys.exit(_object.validate(_object.toJsonDict(), verbose=True).messages)
 
 
-def create_cr(_user_name, _date, _ir_id, _ir_version, _genome_assembly, _software_version):
+def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software_version):
     """Create Summary of Findings"""
 
     cr = ClinicalReport_6_0_0(interpretationRequestId=_ir_id,
                                 interpretationRequestVersion=int(_ir_version), 
                                 interpretationRequestAnalysisVersion=_ir_version,
                                 reportingDate=_date,
-                                user=_user_name,
+                                user=_reporter,
                                 candidateVariants= [],
                                 candidateStructuralVariants=[],
                                 genomicInterpretation="No tier 1 or 2 variants detected",
                                 referenceDatabasesVersions={"genomeAssembly": _genome_assembly},
-                                softwareVersions=ast.literal_eval("{" + _software_version + "}"),
+                                softwareVersions=_software_version,
                                 supportingEvidence=[]
                                 )
     return cr
 
+
+def get_clinical_report_json(ir_id, ir_version, cip_api_url, reports_v6=False):
+    """Get the clinical report as a json."""
+    gel_session = AuthenticatedCIPAPISession()
+    payload = {
+        'reports_v6': reports_v6
+    }
+    cr__endpoint = 'clinical-report/{}/{}/1'.format(ir_id, ir_version) # TODO check hard coded 1
+    request_url = cip_api_url + cr__endpoint
+    r = gel_session.get(request_url, params=payload)
+    return r.json()
+
+def check_if_cr_exists(ir_id, ):
+    """Check whether a summary of findings has already been created"""
+    
+    pass
+    
 
 #TODO separate summary of findings and eq functions:
 def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
@@ -193,8 +207,7 @@ def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False
 def main():
     parsed_args = parser_args()
     # Parse arguments from the command line
-    reporter = parsed_args.reporter[0]  # Name of user generating report (Firstname Surname)
-    user_name = parsed_args.user_name[0] # CIP-API user name when generating the clinical report. 
+    reporter = parsed_args.reporter[0]  # CIP-API user name when generating the clinical report.
     selected_date = parsed_args.date[0]  # In "YYYY-MM-DD" format. If date not specified will default to current_date.
     check_date(selected_date) # Sanity check on entered date
     selected_date = selected_date.strftime("%Y-%m-%d") # Convert datetime to string for downstream functions
@@ -214,17 +227,23 @@ def main():
     try:
         genome_build = ir_json.get('assembly')  # Parse genome assembly from ir_json - genomeAssemblyVersion
         full_ir_id = ir_json.get('case_id') 
-        # Some ugly code to get software versions from ir_json (I expected nested dictionary but got list of length 1 so I regexed for the data I needed)
-        extracted_list =  str(ir_json['interpreted_genome'])
-        pattern = re.compile('softwareVersions\': {(.*?)}')
-        software_version = pattern.findall(extracted_list)[0]
+        # extract the software versions for adding to the summary of findings:
+        interpreted_genomes = ir_json['interpreted_genome']
+        for ig in interpreted_genomes:
+            ig_obj = InterpretedGenome.fromJsonDict(ig['interpreted_genome_data'])
+            cip = ig_obj.interpretationService.lower()
+            if cip == 'genomics_england_tiering':
+                software_versions = ig_obj.softwareVersions
 
-        #print(ir_json.keys())
     except KeyError as e:
         sys.exit('I got a KeyError when parsing ir_json')
     except:
         print('Exception thrown generating ir_json to parse for genome assembly')
         raise
+
+    # Check whether summary of findings already exists:
+    x = get_clinical_report_json(request_id, request_version, cip_api_url, reports_v6=False)
+    print(x)
 
     # Create Exit Questionnaire payload
     flqs = create_flq()
@@ -233,9 +252,9 @@ def main():
     validate_object(eq, "Exit Questionnaire")
     # print(json.dumps(eq.toJsonDict())) # For debugging
     # Create Summary of Findings
-    cr = create_cr(user_name, selected_date, request_id, request_version, genome_build, software_version)
+    cr = create_cr(reporter, selected_date, request_id, request_version, genome_build, software_versions)
     validate_object(cr, "Summary of Findings")
-    # print(json.dumps(cr.toJsonDict())) # For debugging
+    #print(json.dumps(cr.toJsonDict())) # For debugging
 
     # Submit the Exit Questionnaire and summary of findings payload via the CIP API:
     # put_case(request_id, request_version, cip_api_url, eq, cr, testing_on=parsed_args.testing)
