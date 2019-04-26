@@ -138,8 +138,8 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software
                                 interpretationRequestAnalysisVersion=_ir_version,
                                 reportingDate=_date,
                                 user=_reporter,
-                                candidateVariants= [],
-                                candidateStructuralVariants=[],
+                                variants= [],
+                                structuralVariants=[],
                                 genomicInterpretation="No tier 1 or 2 variants detected",
                                 referenceDatabasesVersions={"genomeAssembly": _genome_assembly},
                                 softwareVersions=_software_version,
@@ -147,23 +147,6 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software
                                 )
     return cr
 
-
-def get_clinical_report_json(ir_id, ir_version, cip_api_url, reports_v6=False):
-    """Get the clinical report as a json."""
-    gel_session = AuthenticatedCIPAPISession()
-    payload = {
-        'reports_v6': reports_v6
-    }
-    cr__endpoint = 'clinical-report/{}/{}/1'.format(ir_id, ir_version) # TODO check hard coded 1
-    request_url = cip_api_url + cr__endpoint
-    r = gel_session.get(request_url, params=payload)
-    return r.json()
-
-def check_if_cr_exists(ir_id, ):
-    """Check whether a summary of findings has already been created"""
-    
-    pass
-    
 
 #TODO separate summary of findings and eq functions:
 def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
@@ -173,9 +156,6 @@ def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
     )
     cr_endpoint = "clinical-report/genomics_england_tiering/raredisease/{full_ir_id}}/?reports_v6=true"
-        # TODO dynamically create cr_endpoint report ID (may need to query CIP-API to return GEL, CIP etc)
-        # https://cipapi-beta.genomicsengland.co.uk/api/2/clinical-report/genomics_england_tiering/raredisease/GEL-23-1/
-
   
     # Create urls for uploading exit questionnaire and summary of findings 
     exit_questionnaire_url = cip_api_url + eq_endpoint
@@ -217,12 +197,16 @@ def main():
     if parsed_args.testing == False:
         cip_api_url = "https://cipapi.genomicsengland.nhs.uk/api/2/"
     else:
-        cip_api_url = "https://cipapi-beta.genomicsengland.co.uk/api/2/"
+        cip_api_url = "https://cipapi-beta.genomicsengland.co.uk/api/2/" 
         print("TESTING MODE active using the beta data at: {}".format(cip_api_url))  
     
     # Get interpretation request data from Interpretation Portal
     ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True, testing_on=True)
     # Parse interpretation request data for required fields
+
+    # Check whether summary of findings already exists before preceding:
+    if len(ir_json.get("clinical_report")) > 0:
+        sys.exit("Processing interpretation request {} cancelled as clinical report already exists, please investigate and process manually".format(interpretation_request))
 
     try:
         genome_build = ir_json.get('assembly')  # Parse genome assembly from ir_json - genomeAssemblyVersion
@@ -240,10 +224,6 @@ def main():
     except:
         print('Exception thrown generating ir_json to parse for genome assembly')
         raise
-
-    # Check whether summary of findings already exists:
-    x = get_clinical_report_json(request_id, request_version, cip_api_url, reports_v6=False)
-    print(x)
 
     # Create Exit Questionnaire payload
     flqs = create_flq()
