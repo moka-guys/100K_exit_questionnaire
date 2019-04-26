@@ -34,16 +34,13 @@ def test_create_flq():
     """Tests that correctly configured FamilyLevelQuestions (FLQs) are created"""
     assert exit_questionnaire.create_flq().toJsonDict() == {u'additionalComments': 'No tier 1 or 2 variants detected',
                                                             u'segregationQuestion': 'no', u'caseSolvedFamily': 'no'}
-    exit_questionnaire.validate_flqs(exit_questionnaire.create_flq())
+    exit_questionnaire.validate_object(exit_questionnaire.create_flq(), "Family Level Questions")
 
 
 def test_create_eq():
     """Tests that correctly configured Exit Questionnaires are created"""
-    assert exit_questionnaire.create_eq(datetime.datetime.today().date(), "Joe Bloggs",
-                                        exit_questionnaire.create_flq()).toJsonDict() == {
-               u'familyLevelQuestions': {u'additionalComments': 'No tier 1 or 2 variants detected',
-                                         u'segregationQuestion': 'no', u'caseSolvedFamily': 'no'},
-               u'variantGroupLevelQuestions': [], u'eventDate': str(datetime.datetime.today().date()),
-               u'reporter': 'Joe Bloggs'}
-    exit_questionnaire.validate_eq(
-        exit_questionnaire.create_eq(datetime.datetime.today().date(), "Joe Bloggs", exit_questionnaire.create_flq()))
+    assert exit_questionnaire.create_eq(str(datetime.datetime.today().date()), "JBloggs", 
+                                        exit_questionnaire.create_flq()).toJsonDict() == {u'eventDate': str(datetime.datetime.today().date()), u'reporter': 'JBloggs', u'familyLevelQuestions': {u'caseSolvedFamily': 'no', u'segregationQuestion': 'no', u'additionalComments': 'No tier 1 or 2 variants detected'}, u'variantGroupLevelQuestions': []}
+
+    exit_questionnaire.validate_object(
+        exit_questionnaire.create_eq(str(datetime.datetime.today().date()), "JBloggs", exit_questionnaire.create_flq()), "Exit Questionnaire")
