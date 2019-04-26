@@ -21,7 +21,6 @@ optional arguments:
 
 # import libraries
 import argparse
-import ast
 import datetime
 import os
 import json
@@ -148,14 +147,18 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software
     return cr
 
 
-#TODO separate summary of findings and eq functions:
+#TODO refactor summary of findings and eq functions into separate functions:
 def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
-    # Create endpoint from user supplied variables ir_id and ir_version: # TODO chnage ir_version dynamically 
+    # Create endpoint from user supplied variables ir_id and ir_version (hardcoded clinical_report_version 1 is OK
+    # because script checks no other clinical reports have been generated before calling this function:
+    # TODO Note that v^ is hard coded into this function
     eq_endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/?reports_v6=true".format(
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
     )
-    cr_endpoint = "clinical-report/genomics_england_tiering/raredisease/{full_ir_id}}/?reports_v6=true"
+
+    cr_endpoint = "clinical-report/genomics_england_tiering/raredisease/{full_ir_id}/?reports_v6=true".format(
+        full_ir_id = full_ir_id)
   
     # Create urls for uploading exit questionnaire and summary of findings 
     exit_questionnaire_url = cip_api_url + eq_endpoint
@@ -165,23 +168,17 @@ def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False
     gel_session = AuthenticatedCIPAPISession(testing_on=testing_on)
 
     # Upload Summary of findings:
+    
     response = gel_session.post(url=summary_of_findings_url, json=cr.toJsonDict())
-    print(response.status_code)
-    if response.status_code != 201:
-        sys.exit("Function put_case response.status_code != 201 indicating error: Summary of Findings creation failed")
-
-    # Download and check summary of findings:
-    # response = gel_session.put(url=summary_of_findings_url, json=cr.toJsonDict())
-    # TODO code to check downloaded cr
+    if not (response.status_code == 200 or response.status_code ==201):
+        print("CIP-API response code {r}".format(r =response.status_code))
+        sys.exit("Function put_case response.status_code != 200 or 201 indicating error: Summary of Findings creation failed")
     
     # Upload exit questionnaire:
     response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
-    if response.status_code != 200:
-       sys.exit("Function put_case response.status_code != 200 indicating error: Exit Questionnaire upload failed")
-
-    # Download and check exit questionnaire:
-    # response = gel_session.put(url=exit_questionnaire_url, json=eq.toJsonDict())
-    # TODO code to check downloaded eq
+    if not (response.status_code == 200 or response.status_code ==201):
+        print("CIP-API response code {r}".format(r =response.status_code))
+        sys.exit("Function put_case response.status_code != 200 or 201 indicating error: Exit Questionnaire upload failed")
 
 
 def main():
@@ -202,12 +199,12 @@ def main():
     
     # Get interpretation request data from Interpretation Portal
     ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True, testing_on=True)
-    # Parse interpretation request data for required fields
-
+   
     # Check whether summary of findings already exists before preceding:
     if len(ir_json.get("clinical_report")) > 0:
         sys.exit("Processing interpretation request {} cancelled as clinical report already exists, please investigate and process manually".format(interpretation_request))
 
+    # Parse interpretation request data for required fields
     try:
         genome_build = ir_json.get('assembly')  # Parse genome assembly from ir_json - genomeAssemblyVersion
         full_ir_id = ir_json.get('case_id') 
@@ -231,14 +228,14 @@ def main():
     eq = create_eq(selected_date, reporter, flqs)
     validate_object(eq, "Exit Questionnaire")
     # print(json.dumps(eq.toJsonDict())) # For debugging
+    
     # Create Summary of Findings
     cr = create_cr(reporter, selected_date, request_id, request_version, genome_build, software_versions)
     validate_object(cr, "Summary of Findings")
-    #print(json.dumps(cr.toJsonDict())) # For debugging
+    # print(json.dumps(cr.toJsonDict())) # For debugging
 
     # Submit the Exit Questionnaire and summary of findings payload via the CIP API:
-    # put_case(request_id, request_version, cip_api_url, eq, cr, testing_on=parsed_args.testing)
+    put_case(request_id, full_ir_id, request_version, cip_api_url, eq, cr, testing_on=parsed_args.testing)
 
 if __name__ == '__main__':
     main()
-    
