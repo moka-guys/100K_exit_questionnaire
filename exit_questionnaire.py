@@ -142,7 +142,9 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software
                                 genomicInterpretation="No tier 1 or 2 variants detected",
                                 referenceDatabasesVersions={"genomeAssembly": _genome_assembly},
                                 softwareVersions=_software_version,
-                                supportingEvidence=[]
+                                supportingEvidence=[],
+                                shortTandemRepeats=[],
+                                references=[],      
                                 )
     return cr
 
