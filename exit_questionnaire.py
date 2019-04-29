@@ -219,10 +219,10 @@ def main():
                 software_versions = ig_obj.softwareVersions
 
     except KeyError as e:
-        sys.exit('I got a KeyError when parsing ir_json')
-    except:
-        print('Exception thrown generating ir_json to parse for genome assembly')
-        raise
+        sys.exit(f'I got a KeyError when parsing ir_json, {str(e)}')
+    except Exception as e:
+        sys.exit(f'Exception thrown generating ir_json to parse for genome assembly, {str(e)}')
+        
 
     # Create Exit Questionnaire payload
     flqs = create_flq()
