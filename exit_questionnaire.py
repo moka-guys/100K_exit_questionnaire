@@ -38,7 +38,7 @@ from pprint import pprint # Used for debugging
 # JellyPy used for authentication
 # See  https://github.com/NHS-NGS/JellyPy/blob/master/pyCIPAPI/auth.py
 # Append JellyPy to python path, needed when running via paramiko from Windows
-# sys.path.append(config.jellypy_path)
+sys.path.append('/home/mokaguys/Apps/JellyPy')
 from pyCIPAPI.auth import AuthenticatedCIPAPISession
 from pyCIPAPI.interpretation_requests import get_interpretation_request_list
 from pyCIPAPI.interpretation_requests import get_interpretation_request_json
