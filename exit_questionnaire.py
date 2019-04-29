@@ -134,7 +134,7 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software
 
     cr = ClinicalReport_6_0_0(interpretationRequestId=_ir_id,
                                 interpretationRequestVersion=int(_ir_version), 
-                                interpretationRequestAnalysisVersion=_ir_version,
+                                interpretationRequestAnalysisVersion='1',
                                 reportingDate=_date,
                                 user=_reporter,
                                 variants= [],
