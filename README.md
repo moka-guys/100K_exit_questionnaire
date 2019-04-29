@@ -28,11 +28,7 @@ The script is run during the generation of 100k Neg Neg reports.
 
 ## What data are required for this script to run?
 
-A valid interpretation request ID and reporter name need to be provided. 
-
-## What does this script output?
-
-This script outputs a log file. # TODO add this functionality
+A valid interpretation request ID and reporter name need to be provided.
 
 ## How does this script work?
 
