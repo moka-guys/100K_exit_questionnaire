@@ -28,7 +28,7 @@ The script is run during the generation of 100k Neg Neg reports.
 
 ## What data are required for this script to run?
 
-A valid interpretation request ID and reporter name need to be provided.
+A valid interpretation request ID, reporter username and date need to be provided.
 
 ## How does this script work?
 
@@ -53,6 +53,8 @@ This script reads in a json file named ????? listing valid reporter names which 
 
 ## Testing 
 
+NOTE below tests are currently in development
+
 Generating the Exit Questionnaire is covered by tests in tests_generate_eq.py
 ```bash
 pytest tests_generate_eq.py
@@ -61,7 +63,7 @@ Coverage reports can be generated using:
 
 ```bash
 # Create coverage report
-coverage run exit_questionnaire.py -r "John Smith" -i 11111-1 -d 2019-02-19
+coverage run exit_questionnaire.py -r "jsmith" -i 11111-1 -d 2019-02-19
 # View coverage report
 coverage report
 ```
