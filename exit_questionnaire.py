@@ -92,7 +92,7 @@ def get_request_details(_irid):
         sys.exit("Interpretation request ID doesn't match the format 11111-1, please check entry")
     else:
         # If correctly formatted split interpretation_request on '-' and allocate to request_id, request_version
-        request_id, request_version = _id.split('-')
+        request_id, request_version = _irid.split('-')
     return request_id, request_version
 
 def create_flq():
