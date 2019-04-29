@@ -95,10 +95,6 @@ def get_request_details(_id):
         request_id, request_version = _id.split('-')
     return request_id, request_version
 
-
-# Check that reporter is entered correctly by checking against config.json file of valid reporters:
-# TODO Write code to check reporter is correct + create json file of expected inputs
-
 def create_flq():
     """instantiate FamilyLevelQuestions (FLQs) using GeL Report Models module"""
     flqs = FLQs(
@@ -149,12 +145,10 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software
     return cr
 
 
-#TODO refactor summary of findings and eq functions into separate functions:
 def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
     """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
     # Create endpoint from user supplied variables ir_id and ir_version (hardcoded clinical_report_version 1 is OK
     # because script checks no other clinical reports have been generated before calling this function:
-    # TODO Note that v^ is hard coded into this function
     eq_endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/?reports_v6=true".format(
         ir_id=ir_id, ir_version=ir_version, clinical_report_version=1
     )
