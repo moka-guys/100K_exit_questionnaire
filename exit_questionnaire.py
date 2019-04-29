@@ -200,7 +200,7 @@ def main():
         print("TESTING MODE active using the beta data at: {}".format(cip_api_url))  
     
     # Get interpretation request data from Interpretation Portal
-    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True, testing_on=True)
+    ir_json = get_interpretation_request_json(request_id, request_version, reports_v6=True, testing_on=parsed_args.testing)
    
     # Check whether summary of findings already exists before preceding:
     if len(ir_json.get("clinical_report")) > 0:
