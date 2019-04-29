@@ -42,14 +42,7 @@ git clone git@github.com:genomicsengland/GelReportModels.git
 cd GelReportModels
 pip install .
 ```
-It also uses https://github.com/NHS-NGS/JellyPy/blob/master/pyCIPAPI/auth.py to programmatically provide authentication when connecting to the CIP API.
-
-Authentication credentials are stored in auth_credentials.py and are in
-        dictionary format:
-```python
-        auth_credentials = {"username": "username", "password": "password"}
-```
-This script reads in a json file named ????? listing valid reporter names which it uses to validate inputs. #TODO add this functionality
+It also uses JellyPy for authenticating and pulling data from cip-api https://github.com/NHS-NGS/JellyPy/blob/master/pyCIPAPI/auth.py.
 
 ## Testing 
 

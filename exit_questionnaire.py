@@ -82,16 +82,16 @@ def check_date(_date):
     if _date > current_date:
         sys.exit("Selected_date is in the future, please check value entered.\n")
     elif _date < (current_date - datetime.timedelta(days=365)):  # Ensure date entered is within last year
-        sys.exit("Selected_date is in the distant past, please check value entered.\n")
+        sys.exit("Selected_date is in the distant past (>365 days), please check value entered.\n")
 
 
-def get_request_details(_id):
+def get_request_details(_irid):
     """Check the format of the entered Interpretation request ID and version number"""
     # Regex to check that entered value is digits separated by -
-    if bool(re.match(r"^\d+-\d+$", _id)) == False:
+    if bool(re.match(r"^\d+-\d+$", _irid)) == False:
         sys.exit("Interpretation request ID doesn't match the format 11111-1, please check entry")
     else:
-        # If correctly formatted split itertation_request on '-' and allocate to request_id, request_version
+        # If correctly formatted split interpretation_request on '-' and allocate to request_id, request_version
         request_id, request_version = _id.split('-')
     return request_id, request_version
 
@@ -107,7 +107,7 @@ def create_flq():
 
 
 def create_eq(_selected_date, _reporter, _flqs):
-    """create ExitQuestionnaire (EQ)"""
+    """Create, populate and return an ExitQuestionnaire (EQ) object from GelReportModels."""
     eq = EQ(
         eventDate=_selected_date,
         reporter=_reporter,
@@ -118,7 +118,11 @@ def create_eq(_selected_date, _reporter, _flqs):
 
 
 def validate_object(_object, _str_object_type):
-    """Validates an flqs, eq or cr object and produces an informative error message if non-valid object"""
+    """Validates an flqs, eq or cr object using inbuilt validate method and produces an informative error message if non-valid object"""
+    # The GelReportModel objects have a validate method. This checks that required fields are completed, data types are correct etc.
+    # First you call the toJsonDict method to produce a JSON dictionary from the object
+    # Then you pass this JSON dictionary to the validate method.
+    # Using verbose=True allows you to pull out failure reason if it fails validation
     if _object.validate(_object.toJsonDict()) == False:
         # Print error message with list of non-valid fields:
         print("Invalid {} object created as described below:".format(_str_object_type))
@@ -146,7 +150,17 @@ def create_cr(_reporter, _date, _ir_id, _ir_version, _genome_assembly, _software
 
 
 def put_case(ir_id, full_ir_id, ir_version,cip_api_url, eq, cr, testing_on=False):
-    """PUT /api/2/exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/"""
+    """
+    Submit clinical report (aka summary of findings) and exit questionnaire to CIP-API.
+    Args:
+        ir_id = interpretation request ID without version number e.g. 12345
+        ir_version = interpretation request version number e.g. 1
+        full_ir_id = both of above plus the cip prefix e.g SAP-12345-1
+        cip_api_url = base url to the cip api (to which specific endpoints will be added)
+        eq = completed exit questionnaire object
+        cr = completed clinical report object 
+        testing_on = setting to True will authenticate using beta endpoint rather than live
+    """
     # Create endpoint from user supplied variables ir_id and ir_version (hardcoded clinical_report_version 1 is OK
     # because script checks no other clinical reports have been generated before calling this function:
     eq_endpoint = "exit-questionnaire/{ir_id}/{ir_version}/{clinical_report_version}/?reports_v6=true".format(
@@ -204,7 +218,7 @@ def main():
     try:
         genome_build = ir_json.get('assembly')  # Parse genome assembly from ir_json - genomeAssemblyVersion
         full_ir_id = ir_json.get('case_id') 
-        # extract the software versions for adding to the summary of findings:
+        # extract the pipeline software versions from genomics_england_tiering interpreted genome for adding to the summary of findings:
         interpreted_genomes = ir_json['interpreted_genome']
         for ig in interpreted_genomes:
             ig_obj = InterpretedGenome.fromJsonDict(ig['interpreted_genome_data'])
