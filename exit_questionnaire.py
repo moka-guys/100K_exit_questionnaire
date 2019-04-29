@@ -77,7 +77,7 @@ def parser_args():
 
 
 def check_date(_date):
-    """Sanity check on the entered date"""
+    """Sanity check that entered date seems reasonable: must not be in future or distant past (>1 year ago)"""
     current_date = datetime.datetime.today()
     if _date > current_date:
         sys.exit("Selected_date is in the future, please check value entered.\n")
